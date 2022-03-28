@@ -21,12 +21,12 @@ check_dotnet: dotnet
 
 else # HAS_DOTNET=ON
 
-DOTNET_BUILD_PATH = $(BUILD_DIR)$Sdotnet
+DOTNET_BUILD_PATH := $(BUILD_DIR)$Sdotnet
 
 # All libraries and dependencies
-TEMP_DOTNET_DIR = temp_dotnet
-DOTNET_PACKAGE_DIR = temp_dotnet/packages
-DOTNET_PACKAGE_PATH = $(subst /,$S,$(DOTNET_PACKAGE_DIR))
+TEMP_DOTNET_DIR := temp_dotnet
+DOTNET_PACKAGE_DIR := temp_dotnet/packages
+DOTNET_PACKAGE_PATH := $(subst /,$S,$(DOTNET_PACKAGE_DIR))
 DOTNET_ORTOOLS_ASSEMBLY_NAME := Google.OrTools
 
 # Main target
@@ -464,6 +464,68 @@ test_dotnet: \
  test_dotnet_contrib \
  test_dotnet_dotnet
 
+###############
+##  Archive  ##
+###############
+.PHONY: archive_dotnet # Add C++ OR-Tools to archive.
+archive_dotnet: $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT)
+
+$(INSTALL_DOTNET_NAME):
+	$(MKDIR) $(INSTALL_DOTNET_NAME)
+
+$(INSTALL_DOTNET_NAME)/examples: | $(INSTALL_DOTNET_NAME)
+	$(MKDIR) $(INSTALL_DOTNET_NAME)$Sexamples
+
+define dotnet-sample-archive =
+$(INSTALL_DOTNET_NAME)/examples/%/CMakeLists.txt: \
+ $(TEMP_DOTNET_DIR)/$1/%/%.csproj \
+ $(SRC_DIR)/ortools/$1/samples/%.cs \
+ | $(INSTALL_DOTNET_NAME)/examples
+	-$(MKDIR_P) $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sortools$S$1$Ssamples$S$$*.cs $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+endef
+
+$(foreach sample,$(DOTNET_SAMPLES),$(eval $(call dotnet-sample-archive,$(sample))))
+
+define dotnet-example-archive =
+$(TEMP_ARCHIVE_DIR)/$(INSTALL_DIR)/examples/%/CMakeLists.txt: \
+ $(TEMP_DOTNET_DIR)/$1/%/%.csproj \
+ $(SRC_DIR)/examples/$1/%.cs \
+ | $(INSTALL_DOTNET_NAME)/examples
+	-$(MKDIR_P) $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sexamples$S$1$S$$*.cs $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+endef
+
+$(foreach example,$(DOTNET_EXAMPLES),$(eval $(call dotnet-example-archive,$(example))))
+
+SAMPLE_DOTNET_FILES = \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.cs)))))
+
+EXAMPLE_DOTNET_FILES = \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.cs))))) \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/dotnet/*.cs)))))
+
+$(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT): dotnet \
+ $(SAMPLE_DOTNET_FILES) \
+ $(EXAMPLE_DOTNET_FILES)
+	$(COPY) $(BUILD_DIR)$Sdotnet$Spackages$S*.nupkg $(INSTALL_DOTNET_NAME)
+	$(COPY) LICENSE $(INSTALL_JAVA_NAME)
+	$(COPY) tools$SREADME.dotnet.md $(INSTALL_CPP_NAME)$SREADME.md
+	$(COPY) tools$SMakefile.dotnet $(INSTALL_CPP_NAME)$SMakefile
+	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_CPP_NAME)$SMakefile
+ifeq ($(PLATFORM),WIN64)
+	$(ZIP) -r $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT) $(INSTALL_DOTNET_NAME)
+else
+	$(TAR) --no-same-owner -czvf $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT) $(INSTALL_DOTNET_NAME)
+endif
+
+
+
+
+
+
 #######################
 ##  EXAMPLE ARCHIVE  ##
 #######################
@@ -595,6 +657,9 @@ endif  # HAS_DOTNET=ON
 clean_dotnet:
 #	-$(DEL) $(DOTNET_ORTOOLS_SNK_PATH)
 	-$(DELREC) $(TEMP_DOTNET_DIR)
+	-$(DELREC) $(INSTALL_DOTNET_NAME)
+	-$(DELREC) or-tools_dotnet_*
+	-$(DELREC) $(TEMP_DOTNET_TEST_DIR)
 	-$(DEL) *.nupkg
 	-$(DEL) *.snupkg
 	-@"$(DOTNET_BIN)" nuget locals all --clear

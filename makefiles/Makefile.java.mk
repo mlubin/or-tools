@@ -20,17 +20,17 @@ java:
 	@echo JAVA_BIN = $(JAVA_BIN)
 	@echo MVN_BIN = $(MVN_BIN)
 	$(warning Either JAVA support was turned off, or the the makefile cannot\
-	 find 'java' or 'maven' command which is needed for build. \
-     Please make sure it is installed and in system path. \
-     Or turn java support ON.)
+ find 'java' or 'maven' command which is needed for build. \
+ Please make sure it is installed and in system path. \
+ Or turn java support ON.)
 check_java: java
 test_java: java
 package_java: java
 
 else  # HAS_JAVA=ON
 
-JAVA_BUILD_PATH = $(BUILD_DIR)$Sjava
-TEMP_JAVA_DIR = temp_java
+JAVA_BUILD_PATH := $(BUILD_DIR)$Sjava
+TEMP_JAVA_DIR := temp_java
 JAVA_ORTOOLS_PACKAGE := com.google.ortools
 
 # Main target
@@ -46,13 +46,13 @@ java:
 
 # Detect RuntimeIDentifier
 ifeq ($(OS),Windows)
-JAVA_NATIVE_IDENTIFIER=win32-x86-64
+  JAVA_NATIVE_IDENTIFIER := win32-x86-64
 else
   ifeq ($(OS),Linux)
-  JAVA_NATIVE_IDENTIFIER=linux-x86-64
+  JAVA_NATIVE_IDENTIFIER := linux-x86-64
   else
     ifeq ($(OS),Darwin)
-    JAVA_NATIVE_IDENTIFIER=darwin-x86-64
+    JAVA_NATIVE_IDENTIFIER := darwin-x86-64
     else
     $(error OS unknown !)
     endif
@@ -302,7 +302,7 @@ test_java_linear_solver_samples: \
 test_java_model_builder_samples: \
  rjava_SimpleLpProgramMb \
  rjava_SimpleMipProgramMb
- 
+
 .PHONY: test_java_sat_samples # Build and Run all Java SAT Samples (located in ortools/sat/samples)
 test_java_sat_samples: \
  rjava_AssignmentSat \
@@ -413,6 +413,66 @@ test_java: \
  test_java_contrib \
  test_java_java
 
+###############
+##  Archive  ##
+###############
+.PHONY: archive_java # Add C++ OR-Tools to archive.
+archive_java: $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT)
+
+$(INSTALL_JAVA_NAME):
+	$(MKDIR) $(INSTALL_JAVA_NAME)
+
+$(INSTALL_JAVA_NAME)/examples: | $(INSTALL_JAVA_NAME)
+	$(MKDIR) $(INSTALL_JAVA_NAME)$Sexamples
+
+define java-sample-archive =
+$(INSTALL_JAVA_NAME)/examples/%/CMakeLists.txt: \
+ $(TEMP_JAVA_DIR)/$1/%/pom.xml \
+ $(SRC_DIR)/ortools/$1/samples/%.java \
+ | $(INSTALL_JAVA_NAME)/examples
+	-$(MKDIR_P) $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sortools$S$1$Ssamples$S$$*.cs $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+endef
+
+$(foreach sample,$(JAVA_SAMPLES),$(eval $(call java-sample-archive,$(sample))))
+
+define java-example-archive =
+$(TEMP_ARCHIVE_DIR)/$(INSTALL_DIR)/examples/%/CMakeLists.txt: \
+ $(TEMP_JAVA_DIR)/$1/%/pom.xml \
+ $(SRC_DIR)/examples/$1/%.java \
+ | $(INSTALL_JAVA_NAME)/examples
+	-$(MKDIR_P) $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sexamples$S$1$S$$*.cs $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+endef
+
+$(foreach example,$(JAVA_EXAMPLES),$(eval $(call java-example-archive,$(example))))
+
+SAMPLE_JAVA_FILES = \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.cs)))))
+
+EXAMPLE_JAVA_FILES = \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.cs))))) \
+  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/java/*.cs)))))
+
+$(INSTALL_JAVA_NAME)$(ARCHIVE_EXT): java \
+ $(SAMPLE_JAVA_FILES) \
+ $(EXAMPLE_JAVA_FILES)
+	$(COPY) $(BUILD_DIR)$Sjava$Spackages$S*.nupkg $(INSTALL_JAVA_NAME)
+	$(COPY) LICENSE $(INSTALL_JAVA_NAME)
+	$(COPY) tools$SREADME.java.md $(INSTALL_CPP_NAME)$SREADME.md
+	$(COPY) tools$SMakefile.java $(INSTALL_CPP_NAME)$SMakefile
+	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_CPP_NAME)$SMakefile
+ifeq ($(PLATFORM),WIN64)
+	$(ZIP) -r $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT) $(INSTALL_JAVA_NAME)
+else
+	$(TAR) --no-same-owner -czvf $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT) $(INSTALL_JAVA_NAME)
+endif
+
+########################
+##  Publish Java Pkg  ##
+########################
 .PHONY: publish_java_runtime
 publish_java_runtime: java_runtime
 	cd $(TEMP_JAVA_DIR)$S$(JAVA_ORTOOLS_NATIVE_PROJECT) && "$(MVN_BIN)" deploy
@@ -499,6 +559,9 @@ endif  # HAS_JAVA=ON
 .PHONY: clean_java # Clean Java output from previous build.
 clean_java:
 	-$(DELREC) $(TEMP_JAVA_DIR)
+	-$(DELREC) $(INSTALL_JAVA_NAME)
+	-$(DELREC) or-tools_java_*
+	-$(DELREC) $(TEMP_JAVA_TEST_DIR)
 	-$(DEL) *.jar
 
 #############
