@@ -1,0 +1,68 @@
+cc_binary(
+    name = "cvrptw",
+    srcs = ["cvrptw.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+    ],
+)
+
+cc_binary(
+    name = "cvrp_disjoint_tw",
+    srcs = ["cvrp_disjoint_tw.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+    ],
+)
+
+cc_binary(
+    name = "cvrptw_with_breaks",
+    srcs = ["cvrptw_with_breaks.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_enums_cc_proto",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_binary(
+    name = "cvrptw_with_resources",
+    srcs = ["cvrptw_with_resources.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+    ],
+)
+
+cc_binary(
+    name = "cvrptw_with_stop_times_and_resources",
+    srcs = ["cvrptw_with_stop_times_and_resources.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_binary(
+    name = "cvrptw_with_refueling",
+    srcs = ["cvrptw_with_refueling.cc"],
+    deps = [
+        "//ortools/base",
+        "//ortools/constraint_solver:routing",
+        "//ortools/constraint_solver:routing_flags",
+        "//ortools/routing:cvrptw_lib",
+    ],
+)
