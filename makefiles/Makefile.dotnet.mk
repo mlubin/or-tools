@@ -477,54 +477,64 @@ $(INSTALL_DOTNET_NAME)/examples: | $(INSTALL_DOTNET_NAME)
 	$(MKDIR) $(INSTALL_DOTNET_NAME)$Sexamples
 
 define dotnet-sample-archive =
-$(INSTALL_DOTNET_NAME)/examples/%/CMakeLists.txt: \
+$(INSTALL_DOTNET_NAME)/examples/%/project.csproj: \
  $(TEMP_DOTNET_DIR)/$1/%/%.csproj \
  $(SRC_DIR)/ortools/$1/samples/%.cs \
  | $(INSTALL_DOTNET_NAME)/examples
 	-$(MKDIR_P) $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$S$$*.csproj $(INSTALL_DOTNET_NAME)$Sexamples$S$$*$Sproject.csproj
 	$(COPY) $(SRC_DIR)$Sortools$S$1$Ssamples$S$$*.cs $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
-	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
 endef
 
 $(foreach sample,$(DOTNET_SAMPLES),$(eval $(call dotnet-sample-archive,$(sample))))
 
 define dotnet-example-archive =
-$(TEMP_ARCHIVE_DIR)/$(INSTALL_DIR)/examples/%/CMakeLists.txt: \
+$(INSTALL_DOTNET_NAME)/examples/%/project.csproj: \
  $(TEMP_DOTNET_DIR)/$1/%/%.csproj \
  $(SRC_DIR)/examples/$1/%.cs \
  | $(INSTALL_DOTNET_NAME)/examples
 	-$(MKDIR_P) $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$S$$*.csproj $(INSTALL_DOTNET_NAME)$Sexamples$S$$*$Sproject.csproj
 	$(COPY) $(SRC_DIR)$Sexamples$S$1$S$$*.cs $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
-	$(COPY) $(TEMP_DOTNET_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_DOTNET_NAME)$Sexamples$S$$*
 endef
 
 $(foreach example,$(DOTNET_EXAMPLES),$(eval $(call dotnet-example-archive,$(example))))
 
 SAMPLE_DOTNET_FILES = \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.cs)))))
+  $(addsuffix /project.csproj,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.cs)))))
 
 EXAMPLE_DOTNET_FILES = \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.cs))))) \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/dotnet/*.cs)))))
+  $(addsuffix /project.csproj,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.cs))))) \
+  $(addsuffix /project.csproj,$(addprefix $(INSTALL_DOTNET_NAME)/examples/,$(basename $(notdir $(wildcard examples/dotnet/*.cs)))))
 
 $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT): dotnet \
  $(SAMPLE_DOTNET_FILES) \
  $(EXAMPLE_DOTNET_FILES)
 	$(COPY) $(BUILD_DIR)$Sdotnet$Spackages$S*.nupkg $(INSTALL_DOTNET_NAME)
 	$(COPY) LICENSE $(INSTALL_JAVA_NAME)
-	$(COPY) tools$SREADME.dotnet.md $(INSTALL_CPP_NAME)$SREADME.md
-	$(COPY) tools$SMakefile.dotnet $(INSTALL_CPP_NAME)$SMakefile
-	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_CPP_NAME)$SMakefile
+	$(COPY) tools$SREADME.dotnet.md $(INSTALL_DOTNET_NAME)$SREADME.md
+	$(COPY) tools$SMakefile.dotnet $(INSTALL_DOTNET_NAME)$SMakefile
+	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_DOTNET_NAME)$SMakefile
 ifeq ($(PLATFORM),WIN64)
 	$(ZIP) -r $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT) $(INSTALL_DOTNET_NAME)
 else
 	$(TAR) --no-same-owner -czvf $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT) $(INSTALL_DOTNET_NAME)
 endif
 
-
-
-
-
+# Test archive
+TEMP_DOTNET_TEST_DIR := temp_dotnet_test
+.PHONY: test_archive_dotnet # Test C++ OR-Tools archive is OK.
+test_archive_dotnet: $(INSTALL_DOTNET_NAME)$(ARCHIVE_EXT)
+	-$(DELREC) $(TEMP_DOTNET_TEST_DIR)
+	-$(MKDIR) $(TEMP_DOTNET_TEST_DIR)
+ifeq ($(PLATFORM),WIN64)
+	$(UNZIP) $< -d $(TEMP_DOTNET_TEST_DIR)
+else
+	$(TAR) -xvf $< -C $(TEMP_DOTNET_TEST_DIR)
+endif
+	cd $(TEMP_DOTNET_TEST_DIR)$S$(INSTALL_DOTNET_NAME) \
+ && $(MAKE) MAKEFLAGS= \
+ && $(MAKE) MAKEFLAGS= test
 
 #######################
 ##  EXAMPLE ARCHIVE  ##

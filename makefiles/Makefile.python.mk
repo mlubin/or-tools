@@ -711,6 +711,21 @@ else
 	$(TAR) --no-same-owner -czvf $(INSTALL_PYTHON_NAME)$(ARCHIVE_EXT) $(INSTALL_PYTHON_NAME)
 endif
 
+# Test archive
+TEMP_PYTHON_TEST_DIR := temp_python_test
+.PHONY: test_archive_python # Test C++ OR-Tools archive is OK.
+test_archive_python: $(INSTALL_PYTHON_NAME)$(ARCHIVE_EXT)
+	-$(DELREC) $(TEMP_PYTHON_TEST_DIR)
+	-$(MKDIR) $(TEMP_PYTHON_TEST_DIR)
+ifeq ($(PLATFORM),WIN64)
+	$(UNZIP) $< -d $(TEMP_PYTHON_TEST_DIR)
+else
+	$(TAR) -xvf $< -C $(TEMP_PYTHON_TEST_DIR)
+endif
+	cd $(TEMP_PYTHON_TEST_DIR)$S$(INSTALL_PYTHON_NAME) \
+ && $(MAKE) MAKEFLAGS= \
+ && $(MAKE) MAKEFLAGS= test
+
 ################
 ##  Cleaning  ##
 ################

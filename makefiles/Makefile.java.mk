@@ -426,49 +426,64 @@ $(INSTALL_JAVA_NAME)/examples: | $(INSTALL_JAVA_NAME)
 	$(MKDIR) $(INSTALL_JAVA_NAME)$Sexamples
 
 define java-sample-archive =
-$(INSTALL_JAVA_NAME)/examples/%/CMakeLists.txt: \
+$(INSTALL_JAVA_NAME)/examples/%/pom.xml: \
  $(TEMP_JAVA_DIR)/$1/%/pom.xml \
  $(SRC_DIR)/ortools/$1/samples/%.java \
  | $(INSTALL_JAVA_NAME)/examples
 	-$(MKDIR_P) $(INSTALL_JAVA_NAME)$Sexamples$S$$*
-	$(COPY) $(SRC_DIR)$Sortools$S$1$Ssamples$S$$*.cs $(INSTALL_JAVA_NAME)$Sexamples$S$$*
-	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$Spom.xml $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sortools$S$1$Ssamples$S$$*.java $(INSTALL_JAVA_NAME)$Sexamples$S$$*
 endef
 
 $(foreach sample,$(JAVA_SAMPLES),$(eval $(call java-sample-archive,$(sample))))
 
 define java-example-archive =
-$(TEMP_ARCHIVE_DIR)/$(INSTALL_DIR)/examples/%/CMakeLists.txt: \
+$(INSTALL_JAVA_NAME)/examples/%/pom.xml: \
  $(TEMP_JAVA_DIR)/$1/%/pom.xml \
  $(SRC_DIR)/examples/$1/%.java \
  | $(INSTALL_JAVA_NAME)/examples
 	-$(MKDIR_P) $(INSTALL_JAVA_NAME)$Sexamples$S$$*
-	$(COPY) $(SRC_DIR)$Sexamples$S$1$S$$*.cs $(INSTALL_JAVA_NAME)$Sexamples$S$$*
-	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$SCMakeLists.txt $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(TEMP_JAVA_DIR)$S$1$S$$*$Spom.xml $(INSTALL_JAVA_NAME)$Sexamples$S$$*
+	$(COPY) $(SRC_DIR)$Sexamples$S$1$S$$*.java $(INSTALL_JAVA_NAME)$Sexamples$S$$*
 endef
 
 $(foreach example,$(JAVA_EXAMPLES),$(eval $(call java-example-archive,$(example))))
 
 SAMPLE_JAVA_FILES = \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.cs)))))
+  $(addsuffix /pom.xml,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard ortools/*/samples/*.java)))))
 
 EXAMPLE_JAVA_FILES = \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.cs))))) \
-  $(addsuffix /CMakeLists.txt,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/java/*.cs)))))
+  $(addsuffix /pom.xml,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/contrib/*.java))))) \
+  $(addsuffix /pom.xml,$(addprefix $(INSTALL_JAVA_NAME)/examples/,$(basename $(notdir $(wildcard examples/java/*.java)))))
 
 $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT): java \
  $(SAMPLE_JAVA_FILES) \
  $(EXAMPLE_JAVA_FILES)
 	$(COPY) $(BUILD_DIR)$Sjava$Spackages$S*.nupkg $(INSTALL_JAVA_NAME)
 	$(COPY) LICENSE $(INSTALL_JAVA_NAME)
-	$(COPY) tools$SREADME.java.md $(INSTALL_CPP_NAME)$SREADME.md
-	$(COPY) tools$SMakefile.java $(INSTALL_CPP_NAME)$SMakefile
-	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_CPP_NAME)$SMakefile
+	$(COPY) tools$SREADME.java.md $(INSTALL_JAVA_NAME)$SREADME.md
+	$(COPY) tools$SMakefile.java $(INSTALL_JAVA_NAME)$SMakefile
+	$(SED) -i -e 's/@PROJECT_VERSION@/$(OR_TOOLS_VERSION)/' $(INSTALL_JAVA_NAME)$SMakefile
 ifeq ($(PLATFORM),WIN64)
 	$(ZIP) -r $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT) $(INSTALL_JAVA_NAME)
 else
 	$(TAR) --no-same-owner -czvf $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT) $(INSTALL_JAVA_NAME)
 endif
+
+# Test archive
+TEMP_JAVA_TEST_DIR := temp_java_test
+.PHONY: test_archive_java # Test C++ OR-Tools archive is OK.
+test_archive_java: $(INSTALL_JAVA_NAME)$(ARCHIVE_EXT)
+	-$(DELREC) $(TEMP_JAVA_TEST_DIR)
+	-$(MKDIR) $(TEMP_JAVA_TEST_DIR)
+ifeq ($(PLATFORM),WIN64)
+	$(UNZIP) $< -d $(TEMP_JAVA_TEST_DIR)
+else
+	$(TAR) -xvf $< -C $(TEMP_JAVA_TEST_DIR)
+endif
+	cd $(TEMP_JAVA_TEST_DIR)$S$(INSTALL_JAVA_NAME) \
+ && $(MAKE) MAKEFLAGS= \
+ && $(MAKE) MAKEFLAGS= test
 
 ########################
 ##  Publish Java Pkg  ##
